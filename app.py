@@ -1,18 +1,30 @@
 import streamlit as st
 import pickle
-import string
+import nltk
 from nltk.corpus import stopwords
-import nltk
-from nltk.stem.porter import PorterStemmer
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer
+import string
 
-ps = PorterStemmer()
-import nltk
+# Ensure stopwords and punkt are downloaded
+nltk.download('stopwords')
 nltk.download('punkt')
+
+# Load the Bernoulli Naive Bayes model from the pickle file
+with open('bernoulli_model.pkl', 'rb') as f:
+    bnb = pickle.load(f)
+
+# Load the CountVectorizer from the pickle file
+with open('count_vectorizer.pkl', 'rb') as f:
+    cv = pickle.load(f)
+
+# Initialize the Porter Stemmer
+ps = PorterStemmer()
 
 
 def transform_text(text):
     text = text.lower()
-    text = nltk.word_tokenize(text)
+    text = word_tokenize(text)
 
     y = []
     for i in text:
@@ -34,23 +46,26 @@ def transform_text(text):
 
     return " ".join(y)
 
-tfidf = pickle.load(open('vectorizer.pkl','rb'))
-model = pickle.load(open('model.pkl','rb'))
 
-st.title("Email/SMS Spam Classifier")
+# Streamlit app
+st.title('SMS and Email spam Classification')
 
-input_sms = st.text_area("Enter the message")
+# Input text box
+input_text = st.text_area("Enter text for classification:")
 
-if st.button('Predict'):
+# Button to make prediction
+if st.button('Classify'):
+    # Preprocess the input text
+    transformed_text = transform_text(input_text)
 
-    # 1. preprocess
-    transformed_sms = transform_text(input_sms)
-    # 2. vectorize
-    vector_input = tfidf.transform([transformed_sms])
-    # 3. predict
-    result = model.predict(vector_input)[0]
-    # 4. Display
-    if result == 1:
-        st.header("Spam")
+    # Convert the text to a document-term matrix
+    vectorized_text = cv.transform([transformed_text]).toarray()
+
+    # Make prediction
+    prediction = bnb.predict(vectorized_text)
+
+    # Display the prediction
+    if prediction[0] == 0:
+        st.write('Prediction: Not Spam')
     else:
-        st.header("Not Spam")
+        st.write('Prediction: Spam')
